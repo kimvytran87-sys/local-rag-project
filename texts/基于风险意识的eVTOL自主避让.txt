@@ -1,0 +1,1828 @@
+332083-1
+航
+空
+学
+报
+Acta Aeronautica et Astronautica Sinica
+Jan. 25 2026 Vol. 47 No. 2
+ISSN 1000-6893 CN 11-1929/V
+基于风险意识的eVTOL 自主避让
+张康1，汤新民1，2，*，顾俊伟1
+1．南京航空航天大学 民航学院，南京 
+211106
+2．中国民航大学 城市空中交通系统技术与装备重点实验室，天津 
+300300
+摘 
+要：在城市空中交通背景下，目前针对动态、不确定环境下电动垂直起降（eVTOL）飞机的实时避让还没有一个成熟
+的解决方案，对此提出了一种具有风险意识的高效运动规划方法，用于实现eVTOL 的实时避让。同时考虑eVTOL 的动
+态碰撞规避约束和静态地理围栏约束，建立了机会约束的模型预测控制问题（CC-MPC）作为运动规划的子问题；利用
+Big-M 方法和置信椭球重构机会约束，将CC-MPC 转换为混合整数规划问题（MIP），接着通过迭代凸化的优化方法来快
+速求解MIP，并在优化过程中加入全局搜索算法作为前端以提供高质量的初始方案；最后通过滚动时域框架整合所有过
+程，实现了eVTOL 动态轨迹的快速生成，在仿真实验中通过实现不同场景下的规划过程，验证了所提方法的有效性。
+关键词：城市空中交通；电动垂直起降飞机；碰撞规避；机会约束；运动规划
+中图分类号：V279 
+ 
+ 
+文献标识码：A 
+ 
+ 
+文章编号：1000-6893（2026）02-332083-14
+近些年来，随着城市交通所呈现出日益拥
+堵的窘境，城市空中交通（Urban Air Mobility， 
+UAM）的概念一经提出就受到了美国国家航空
+航天局（National Aeronautics and Space Admin⁃
+istration，NASA）、美国联邦航空管理局（Fed⁃
+eral Aviation Administration，FAA）等相关方的
+极大关注
+［1-2］。UAM 作为低空经济的关键支
+柱，是指在城市及其周边地区，充分利用低空空
+间进行多元化交通活动的总称。这些活动包括
+但不限于城市空中巴士、辅助物流配送、航空应
+急救援等，旨在打造立体化的城市交通网络，缓
+解地面交通压力，提升城市运行效率
+［3］。
+为了满足城市交通的正常需求，UAM 将在
+有限的城市空域中引入大量电动垂直起降飞行
+器（eVTOL）
+［4］。在过去有关UAM 的研究中，
+大多都集中在固定结构飞行空域，即事先规定
+好飞行走廊，eVTOL 就可以按照走廊内的固定
+航线安全飞行。而与之相对的，自由飞行空域
+概念是面向未来更复杂、更多变的城市环境提
+出的，旨在有限空域里利用更多的容量。尽管
+自由飞行具有巨大优势，但其发展仍面临巨大
+挑战，在UAM 中有效部署eVTOL 是需要本身
+具有一定的感知与避让能力
+［5-7］，自主避让能力
+作为eVTOL 的核心功能，是在UAM 中保证安
+全、实现碰撞规避的关键，然而，由于日益增长
+的飞行器数量、多样化的场景需求，系统承担的
+任务越来越具有挑战性，虽然对于UAM 的效
+益，性能各方面获得了提升，但也增加了空域容
+量，对eVTOL 系统的在线运行能力提出了相当
+大的考验；而且在实际飞行场景中，普遍存在很
+http:
+//
+hkxb. buaa. edu. cn  hkxb@buaa. edu. cn
+引用格式：张康， 汤新民， 顾俊伟． 基于风险意识的eVTOL 自主避让［J］． 航空学报， 2026， 47（2）： 332083． ZHANG K ， TANG 
+X M， GU J W.  Risk-aware autonomous avoidance for eVTOL［J］.  Acta Aeronautica et Astronautica Sinica， 2026， 47
+（2）： 332083 （in Chinese）.  doi：10. 7527/S1000-6893. 2025. 32083
+收稿日期：2025-04-07；退修日期：2025-05-19；录用日期：2025-07-01；网络出版时间：2025-07-21 11：12
+网络出版地址：https：//hkxb. buaa. edu. cn/CN/Y2026/V47/I2/332083
+基金项目：国家自然科学基金（52072174）；高端外国专家引进计划（G2023202003L）；天津市科技计划（24JCZDJC00090）
+ * 通信作者．E-mail： tangxinmin@nuaa. edu. cn
+
+航
+空
+学
+报
+332083-2
+多的不确定性因素，诸如传感器的固有差异、天
+气变化、GPS 噪音以及系统认知能力不足等，这
+些干扰在eVTOL 的实际运行中埋下了不小的
+安全隐患，这也就迫使UAM 需要eVTOL 本身
+具备能够处理不确定性风险并实时规划路径的
+能力。
+eVTOL 的自主避让是指通过实时感知外
+界信息评估碰撞风险，快速生成低风险、低成本
+飞行路径的能力，目前相关研究也主要集中在
+碰撞风险建模
+［8-9］和安全路径规划
+［10-11］2 部分。
+传统的风险建模方法往往是根据固定航路结构
+在相对明确的飞行态势下设计安全间隔，但在
+面对复杂、多变的低空自由飞行态势下将不再
+适合，由于受到机载端的硬件限制，eVTOL 无
+法对环境中障碍物状态进行精确估计，传统的
+做法可能会导致eVTOL 过于悲观评估下一步
+态势，并倾向于制定更保守的安全边界，而过于
+保守的安全边界可能会导致避让方案的性能损
+失甚至不可行，见图1。因此需要制定更灵活的
+安全边界，并合理权衡效率和安全要求。
+路径规划主要包括全局搜索和局部优化
+2 个方面，全局搜索算法（A*
+［12］、RRT*
+［13］）可以
+高效探索空间、快速输出可行路径，而局部优化
+算法（伪谱法
+［14］、打靶法
+［15］）则支持更精细地时
+空轨迹优化，在最近的研究中
+［16］倾向于将二者
+优点结合制定更有效率的分层规划方案，即首
+先通过全局搜索算法在复杂环境下生成一条安
+全的参考路径，然后，基于参考路径为后续的优
+化算法提供合理的初值猜测，从而降低问题中
+非凸避让约束带来的求解效率低的影响。
+机会约束通过调节阈值的形式提供概率意
+义上的安全保障，可以很好地权衡避让的安全
+和效率要求。早期研究中有蒙特卡洛
+［17］、场景
+优化
+［18］、粒子方法
+［19］等，通过大量的采样来实现
+机会约束的显示重构，但这类方法计算成本过
+高，适用于离线分析。而在最近的研究中，机会
+约束开始经常作为安全约束被应用无人机的自
+主避让问题中，在文献［20］中，机会约束被纳入
+到建模为马尔可夫决策过程的eVTOL 在线避让
+问题中，以获得具有所需的概率安全保证的轨
+迹。快速搜索随机树（RRT）方法得益于全局搜
+索特性和良好的扩展性，是当下路径规划方法中
+的热点
+［21-23］，文献［24］通过引入相对不确定性构
+建eVTOL 之间的风险域约束，再利用RRT 方法
+为自由飞行空域下的所有eVTOL 生成安全、公
+平的路径。然而场景设计不够系统，大多局限于
+二维、简单飞行场景，适应性仍有所不足。
+为了满足低空城市环境下的大量飞行约束，
+eVTOL 需要支持规划更精细的时空轨迹，模型
+预测控制（MPC）预测未来一段时间内的事情，
+并通过在线求解子优化问题进行规划，具有实时
+处理多约束运动规划问题的能力。文献［25］
+基于速度障碍法，考虑速度的不确定性并纳入
+到机会约束中，使用MPC 规划框架实现了与
+高速障碍物的实时碰撞规避。文献［26］提出
+了一种基于概率预测的机会约束非线性MPC
+方法，用于在杂乱和未知环境中生成轨迹。然
+而，问题中的避障约束常常是以非凸形式存在
+的，这对MPC 问题的在线求解是十分不利的，
+传统做法通过泰勒展开直接线性化原问题的
+非凸项，但这可能会加重保守，在优化问题中，
+一个经典的思路是利用原问题的结构转换为
+凸问题形式，从而保证其能够在多项式时间内
+被解决。
+综上，本文针对面向不确定、动态环境下的
+eVTOL 的在线避让问题，需要同时考虑避让算
+法的效率和鲁棒性。首先，考虑了eVTOL 的动
+态碰撞规避和静态地理围栏约束，建立机会约
+束的模型预测控制问题（CC-MPC）；然后再利
+用Big-M 和置信椭球重构机会约束，CC-MPC
+得以被转换为MIP；接着通过迭代凸化的方法
+图 1　eVTOL 保守地规划轨迹
+Fig. 1　Conservatively planned trajectory for eVTOL
+
+航
+空
+学
+报
+332083-3
+来处理MIP，并在优化过程中加入全局搜索算
+法作为前端以提供高质量初始方案；最后通过
+滚动时域框架实现整个运动规划流程，在仿真
+实验中验证了其可行性和有效性。
+1　问题描述
+聚焦于UAM 场景中可能存在的障碍威胁，
+同时考虑动态障碍物和静态地理围栏2 种作为
+eVTOL 飞行避让约束，不确定性被视为扰动添
+加到这2 种约束中，而最终任务目标是找到使
+eVTOL 安全抵达目标区域的最小控制能耗，同
+时风险需要低于规定的阈值。
+1. 1　运动模型
+考虑eVTOL 运动模型为一个线性时不变
+系统
+xk + 1 = Axk + Buk        ∀k = 1，2，…，N
+（1）
+式中：xk = ( pk，vk) ∈R
+nx = X 表示第k 个时间步的
+状态信息（位置和速度），uk ∈R
+nu = U 表示第k 个
+时间步的控制输入，N 表示任务的规划时域。
+同样，考虑动态障碍物的运动模型为不受控
+的随机线性时不变系统
+x
+obs，j
+k + 1 = A
+obs，j x
+obs，j
+k
++ B
+obs，j + w
+obs，j
+k
+（2）
+式中： x
+obs，j
+k
+∈X 表示第j 个障碍物在时间步k 的状
+态，来自扰动w
+obs，j
+k
+~N (0，Σ wobs，j) 遵循一个零均值
+的高斯分布，定义第j 个障碍物的初始状态
+x
+obs，j
+0
+~N ( μ
+obs，j
+0
+，Σ
+obs，j
+0 )，同样遵循高斯分布。
+1. 2　碰撞规避模型
+传统上认为eVTOL 和其他动态障碍物在规
+定的距离内就视为安全，其碰撞模型往往被视为
+点与膨胀球之间的几何关系。而本文为了避免
+碰撞模型的保守，通过集合论重新定义了eV⁃
+TOL 与其它动态障碍的碰撞条件。将eVTOL
+的安全区定义为一个中心为c0 的刚性、有界凸集
+V (c0)，其特征函数被表示为
+V (c0) ={x ∈X：h0( x - c0) ≤0}
+（3）
+同样的，其它动态障碍物的安全区被表示为
+O i(ci) ={x ∈X：hi( x - ci) ≤0} 
+∀i = 1，2，…，N obs
+（4）
+式中： ci = x
+obs，i 表示安全区的中心，hi( ⋅) 表示安
+全区的形状。
+eVTOL 与动态障碍间的碰撞定义被视为彼
+此安全区之间的相交：O (c)∩V (
+)
+c0 ≠∅，并且
+还将会满足以下转换关系。
+O (c)∩V (
+)
+c0 ≠∅⇔(c0 - c) ∈O (0) ⊕
+( - V (0))
+（5）
+由于扰动存在，动态障碍的位置信息x
+obs，j
+k
+是
+随机的，同样X
+obs
+k
+=∪
+j = 1
+N obs (
+)
+O j(
+)
+x
+obs，j
+k
+⊕(
+)
+-V ( )
+0
+也是随机的，为了下面描述方便，定义X = ( x1，
+)
+x2，…，xN ∈R
+N × nx ，U =(
+)
+u0，u1，…，uN - 1 ∈R
+N × nu，
+X obs ={X：∨
+k = 1
+N
+xk ∈X
+obs
+k }，而碰撞规避条件被重新
+定义为一个联合机会约束
+Pr ( X ∈X obs) ≤εobs
+（6）
+式中：εobs 表示为一个可接受的概率阈值。
+1. 3　地理围栏模型
+地理围栏描述了eVTOL 不可通行的如高
+楼、树木等静态区域，而与动态障碍相比地理围
+栏尺度会更大，为不失一般性，这里将其统一建
+模为多面体形状，定义环境中的地理围栏数量为
+N geo，那在第k 个时间步的第j 个地理围栏G
+j
+k 能够
+被表示为
+G
+j
+k =ì
+í
+î
+x ∈X：∧
+i = 1
+F j
+( a
+k
+ij)
+T
+x + b
+k
+ij ≤0ü
+ý
+þ
+（7）
+式中：F j ∈R 表示边数；a
+k
+ij 表示地理围栏的形状；
+b
+k
+ij ∈R 表示地理围栏的尺寸，为下面方便描述，假
+定只有b
+k
+ij 受到扰动作为随机变量，并遵循高斯分
+布b
+k
+ij~N ( μ
+k
+ij，Σ
+k
+ij)。
+与之前类似，定义X geo =ì
+í
+î
+X：∨
+j = 1
+N geo
+∨
+k = 1
+N
+xk ∈G
+j
+k
+ü
+ý
+þ
+，
+地理围栏约束也被重新定义为一个联合机会约束
+Pr( X ∈X geo) ≤εgeo
+（8）
+1. 4　机会约束轨迹优化问题
+结合任务目标eVTOL 运动规划模型的优化
+子问题被定义为一个考虑机会约束的模型预测
+控制问题。问题1 中，l ( ⋅) 和lf( ⋅) 被假定为凸函
+
+航
+空
+学
+报
+332083-4
+数，并表示过程代价和终端代价；X Goal 为一个凸
+集，表示目标区域。
+问题1 
+CC-MPC
+minimize
+X，U
+：  ∑
+k = 0
+N - 1
+l (
+)
+xk，uk + lf (
+)
+xN
+（9a）
+subject to：
+ 
+ì
+í
+î
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ïïï
+ï
+ï
+ï
+ï
+xk + 1 = Axk + Buk      
+        ∀k ∈{
+}
+0，1，…，N - 1                  ( 9b )
+Pr (
+)
+X ∈X obs ≤εobs                              ( 9c )
+Pr(
+)
+X ∈X geo ≤εgeo                             ( 9d )
+X ∈X ⊂R
+N × nx                                      ( 9e )
+U ∈U ⊂R
+N × nu                                       ( 9f )
+x0 = x( )
+0                                                ( 9g )
+xN ∈X Goal                                                ( 9h )
+2　建模与求解
+本节通过矩信息转换和迭代凸优化方法提出
+基于滚动时域控制框架的运动规划算法，以解决
+eVTOL 在动态，不确定环境下的实时避让难题。
+运动规划算法的基本流程：首先初始化问题基本信
+息，同时eVTOL 感知周围环境捕捉扰动信息添加
+到机会约束中并建立问题1，接着通过矩信息转换
+问题1 得到确定性问题2，利用问题2 结构通过一
+个基于迭代凸优化思想的两阶段求解方案实现
+eVTOL 轨迹的快速生成，实时避让的整个算法流
+程滚动式前进，直至完成任务目标时停止。
+2. 1　基于矩信息转换的机会约束重构
+对于问题1 中的机会约束并不存在一个显示
+的通用解决方案，在过去的研究中通过采取大量
+采样方式处理，但这极为耗时。本文在基于假设
+高斯扰动的前提下，利用置信椭球和Big-M 法对
+原机会约束进行矩信息转换，构建问题1 的确定
+性形式。
+2. 1. 1　碰撞规避约束重构
+考虑动态障碍数量为Nobs 的运行场景，对于
+机会约束式（6）的重构过程：首先利用布尔不等
+式Pr( ∨
+i = 1
+N
+A i) ≤∑
+i = 1
+N
+Pr ( A i) 以及引理1 将联合概
+率不等式保守近似为NN obs 个概率不等式之和，
+然后采取均匀的风险分配方案为每一个动态障
+碍设置相等的安全阈值，机会约束
+Pr ( X ∈X obs) ≤εobs 的重构形式
+Pr ( X ∈X obs) ≤εobs ⇔
+        Pr( ∨
+k=1
+N
+∨
+j=1
+N obs
+xk ∈Oj( x
+obs，j
+k ) ⊕( -V (0))) ≤εobs ⇐
+        ∑
+k = 1
+N
+∑
+i = 1
+N obs
+Pr(
+)
+xk ∈O j(
+)
+x
+obs，j
+k
+⊕(
+)
+-V ( )
+0
+≤εobs ⇐
+        Pr( xk ∈O j( x
+obs，j
+k ) ⊕( - V (0))) ≤ε
+obs，j
+k
+⇐
+        Pr(( xk - x
+obs，j
+k ) ∈O j(0) ⊕( - V (0))) ≤ε
+obs，j
+k
+（10）
+式中：单个风险阈值ε
+obs，j
+k
+=
+εobs
+NN obs
+，j ∈{1，2，…，
+}
+Nobs 。
+已知x
+obs，j
+k
+服从高斯分布，同理xk - x
+obs，j
+k
+也满
+足高斯分布，为方便描述，让x = xk - x
+obs，j
+k
+，
+x~N ( μ，Σ)，S (0) = O j(0) ⊕( - V (0))，进一步
+重构式（10）得
+Pr( x ∈S (0)) ≤ε
+obs，j
+k
+⇔
+∫
+ X I S ( )
+0 ( x) dx ≤ε
+obs，j
+k
+⇔
+∫
+x ∈S ( )
+0
+p ( x) dx ≤ε
+obs，j
+k
+⇐
+m (S (0)) × sup
+x ∈S ( )
+0
+p ( x) ≤ε
+obs，j
+k
+⇔
+p ( x) ≤
+ε
+obs，j
+k
+m (
+)
+S ( )
+0
+， ∀x ∈S ( )
+0 ⇔
+∀E ( μ，Q) =
+ì
+í
+î
+ï
+ï
+x ∈X：p ( x) ≥
+ε
+obs，j
+k
+m (
+)
+S ( )
+0
+ü
+ý
+þ
+ïïï
+ï
+        E ( μ，Q) ∩S (0) = ∅⇔
+μ ∉E (0，Q) ⊕S (0)
+（11）
+式中：IX( x) 表示示性函数（如果x ∈X 则
+IX( x) = 1，否则IX( x) = 0），p ( x) 表示概率密度
+函数。
+首先，通过示性函数IX( x) 将有关状态集的概
+率不等式转换为概率密度不等式，然后放大概率
+密度函数到上界有∫x ∈S ( )
+0 p ( )
+x d x ≤m (
+)
+S ( )
+0
+×
+sup
+x ∈S ( )
+0
+p ( x) ≤ε
+obs，j
+k
+，得到了概率密度函数的不等式
+
+航
+空
+学
+报
+332083-5
+p ( x) ≥
+ε
+obs，j
+k
+m (
+)
+S ( )
+0
+，容易知道该不等式是与其均值
+和方差有关椭球集形式。因此单个机会约束最
+后会被转换为椭球约束形式E ( μ，Q)
+E ( μ，Q) ={x：( x - μ)
+TQ
+-1( x - μ) ≤1}
+（12）
+概率密度函数不等式p ( x) ≥
+ε
+obs，j
+k
+m (
+)
+S ( )
+0
+到椭
+球约束的转换关系有
+1
+(
+)
+2π
+n/2
+|
+| Σ
+1/2 exp( - 1
+2 ( x - μ)
+TΣ
+-1( x - μ)) ≥
+ε
+obs，j
+k
+m (
+)
+S ( )
+0
+⇔( x - μ)
+TΣ
+-1( x - μ) ≤
+-2ln(
+ε
+obs，j
+k
+|
+| Σ
+1/2(
+)
+2π
+nx/2
+m (
+)
+S ( )
+0
+)
+⇔
+( x - μ)
+T(
+- 2ln(
+ε
+obs，j
+k
+|
+| Σ
+1/2(
+)
+2π
+n/2
+m (
+)
+S ( )
+0
+)
+Σ)
+-1
+·
+( x - μ) ≤1
+（13）
+椭球形状为Q =-2ln(
+ε
+obs，j
+k
+|
+| Σ
+1/2(
+)
+2π
+n/2
+m (
+)
+S ( )
+0
+)
+Σ。
+值得注意的是椭球间的闵可夫斯基和并不是封闭
+的，对于一个中心c 和形状Q 的椭球函数，它的支
+持函数为
+ρ(l，E (c，Q)) = l
+T c +
+l
+TQl
+（14）
+通过文献［27］，对于一个凸、紧集，那么该集
+合间的闵可夫斯基和的支持函数等价于每个集
+合支持函数的和
+ρ(l，E (c1，Q 1) ⊕E (c2，Q 2)) =
+ρ(l，E (c1，Q 1)) + ρ(l，E (c2，Q 2)) =
+l
+T c1 + l
+TQ1l +l
+T c2 +
+l
+TQ2l =l
+T(
+)
+c1 + c2 +
+ l
+T(
+)
+ l
+TQ1l  + l
+TQ2l  × (
+)
+Q 1
+l
+TQ1l
+ + 
+Q 2
+l
+TQ2l
+l
+（15）
+因此，椭球在进行闵可夫斯基和后仍然是椭
+球，并且中心为(c1 + c2)，形状为(
+l
+TQ 1l +
+l
+TQ 2l ) ×(
+Q 1
+l
+TQ 1l
++
+Q 2
+l
+TQ 2l )
+。
+2. 2. 2　地理围栏约束重构
+地理围栏机会约束的展开形式为
+Pr( X ∈X geo) ≤εgeo ⇔
+Pr( X ∉X geo) > 1 - εgeo ⇔
+Pr( ∧
+k = 1
+N
+∧
+j = 1
+N geo
+xk ∉G
+j
+k) > 1 - εgeo
+（16）
+式中：xk ∉G
+j
+k 表示非凸的可行域约束会造成求解
+困难，对此，利用Big-M 法对该约束进行重构
+xk ∉G
+j
+k ⇔∨
+i = 1
+F j
+( a
+k
+ij)
+T
+xk + b
+k
+ij > 0 ⇐
+∧
+i = 1
+F j
+( a
+k
+ij)
+T
+xk + b
+k
+ij + Mz
+k
+ij > 0    ∑
+i = 1
+F j
+z
+k
+ij < F j（17）
+式中：M 表示一个充分大的常数，z
+k
+ij ∈B 表示0-1
+变量。
+为了方便计算对原约束进行适当的收缩：
+∑
+i = 1
+F j
+z
+k
+ij = F j - 1，接着利用布尔不等式进行重构得
+到一系列的单个线性机会约束
+Pr(
+)
+(
+)
+a
+k
+ij
+T
+xk + b
+k
+ij + Mz
+k
+ij ≤0 ≤ε
+geo， j
+k
+∀k ∈{
+}
+1，2，⋯，N ，j ∈{
+}
+1，2，⋯，N obs
+i ∈{
+}
+1，2，⋯，F j  
+（18）
+式中：风险分配满足ε
+geo， j
+k
+=
+εgeo
+NN geo
+。
+为了验证式（17）收缩到式（18）的合理性，通
+过下式
+∧
+k = 1
+N
+∧
+j = 1
+N geo
+∧
+i = 1
+F j
+Pr(( a
+k
+ij)
+T
+xk + b
+k
+ij + Mz
+k
+ij ≤0) ≤ε
+geo， j
+k
+⇒
+∑
+k=1
+N
+∑
+j=1
+N geo
+Pr(
+)
+∧
+i=1
+F j
+(
+)
+a
+k
+ij
+T
+xk +b
+k
+ij +Mz
+k
+ij ≤0 ≤εgeo ⇒
+Pr( ∧
+k=1
+N
+∧
+j=1
+N geo
+∧
+i=1
+F j
+( a
+k
+ij)
+T
+xk +b
+k
+ij +Mz
+k
+ij ≤0) ≤εgeo ⇒
+Pr( ∧
+k = 1
+N
+∧
+j = 1
+N geo
+xk ∈G
+j
+k) ≤εgeo ⇔
+Pr( ∧
+k = 1
+N
+∧
+j = 1
+N geo
+xk ∉G
+j
+k) > 1 - εgeo
+（19）
+接下来进一步转换线性机会约束为可解的
+
+航
+空
+学
+报
+332083-6
+形式，这里先考虑一个简单情形，伴随一维高斯
+随机变量X~N ( μ，Σ) 的线性机会约束将会有以
+下转换关系
+Pr ( X ≤0) ≤ε ⇔μ ≥
+2Σ ⋅erf
+-1(1 - 2ε)
+（20）
+式中：函数erf ( z) =
+2
+π ∫
+0
+z
+e
+-t 2 dt。
+利用式（20）对式（18）进行重构最终得到地
+理围栏约束的确定性形式
+Pr(
+)
+(
+)
+a
+k
+ij
+T
+xk + b
+k
+ij + Mz
+k
+ij ≤0 ≤ε
+geo， j
+k
+ ⇔
+μ
+k
+ij +(
+)
+a
+k
+ij
+T
+xk + Mz
+k
+ij ≥
+2Σ
+k
+ij ⋅
+erf
+-1(
+)
+1 - 2ε
+geo， j
+k
+∀k ∈{
+}
+1，2，⋯，N ，j ∈{
+}
+1，2，⋯，N obs
+i ∈{
+}
+1，2，⋯，F j
+（21）
+至此，所有的机会约束完成重构，代入到问
+题1 中得到确定性版本的问题2（DC-MPC），在
+问题2 中，终端代价lf( ⋅) 通过引入辅助变量y 被
+定义为寻找最接近目标区域的终端状态；过程代
+价l ( ⋅) 被定义为控制能耗；在式（22c）满足
+∀k ∈{1，2，…，N }， ∀j ∈{1，2，…，Nobs}，式（22d）满
+足∀k ∈{
+}
+0，1，…，N - 1 ，∀j ∈{
+}
+1，2，…，N geo ，
+∀i ∈{1，2，…，F j}。
+问题2 
+DC-MPC
+minimize
+X，U， y
+：  ∑
+k = 0
+N - 1
+
+
+uk + λ
+
+xk - y
+（22a）
+subject to：
+ 
+ì
+í
+î
+ï
+ï
+ï
+ï
+ï
+ï
+ïïï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ïïï
+ï
+ï
+ï
+ï
+ï
+xk + 1 = Axk + Buk
+        ∀k ∈{
+}
+0，1，…，N - 1              ( 22b )
+xk - x
+obs，j
+k
+∉E (
+)
+0，Q ⊕S ( )
+0          ( 22c )
+μ
+k
+ij +(
+)
+a
+k
+ij
+T
+xk + Mz
+k
+ij ≥
+        2Σ
+k
+ij ⋅erf
+-1(
+)
+1 - 2ε
+geo， j
+k
+         ( 22d )
+X ∈X ⊂R
+N × nx                                   ( 22e )
+U ∈U ⊂R
+N × nu                                   ( 22f )
+x0 = x( )
+0                                             ( 22g )
+y ∈X goal                                                ( 22h )
+尽管问题2 已经成为一个非线性混合整数规
+划问题，但它仍然存在非凸约束导致求解上的效
+率不足。对此，将采用一种迭代凸优化的方法来
+求解问题2。
+2. 2　迭代凸优化
+为表示方便，定义qj( )
+x > 0，∀j ∈{1，2，…，
+}
+Nobs 表示问题2 中所有的非凸约束，并且可以发
+现问题2 中仅有（22c）作为非凸椭球约束存在。
+下面将通过eVTOL 参考路径x
+r
+k 投影的技巧对非
+凸椭球约束进行线性化（参考路径为前次迭代
+解，初始参考路径可由全局搜索算法RRT
+* 获
+得），已知参考路径x
+r
+k 不会出现在椭球集内，因此
+可以将其投影在椭球集边界上
+x
+proj，j
+k
+= arg min
+x
+{
+
+x
+r
+k - x |qj( x) ≤0}
+（23）
+在上述优化问题中，由于椭球集是凸集，因
+此约束qj( x) ≤0 是凸的，式（23）是一个可以被很
+快求解的凸优化问题。如图2，在投影点x
+proj，j
+k
+上
+进行线性化
+L
+j
+k ={x ∈X |∇qj( x
+proj，j
+k
+) ( x - x
+proj，j
+k
+) > 0}
+（24）
+至此问题2 中所有非凸约束都可以被式（24）
+线性化，从而得到一个问题2 的凸化版本问题3。
+对于问题2 的真实解将由一个迭代求解问题3 的
+过程来不断逼近，为此，增加了信赖域约束
+
+
+xk - x
+r
+k
+2 ≤rx 和
+
+uk - u
+r
+k
+2 ≤ru 的设计，整个迭
+代优化过程见算法1。
+在算法1 的初值设置阶段，一个高质量的初始
+路径可以有效帮助算法收敛效率的提升。RRT*
+能高效地在非凸空间中进行探索，并快速生成无碰
+撞路径，而且本身也具有渐近最优性质。因此，采
+用RRT*算法作为算法1的热启动选项。
+图 2　椭球约束的凸化过程
+Fig. 2　Convex approximation of ellipsoid constraints
+
+航
+空
+学
+报
+332083-7
+浏览整个算法1 的流程，先是开始阶段设置
+的超参数和停止条件来保证算法闭环，在主循环
+中，问题2 被转换为凸化的问题3，然后求解问题3
+得到第i+1 步的解，再判断该解是否满足信赖域
+约束，而后根据不同情况判断是否更新约束或是
+否接受该解。
+问题3 
+CDC-MPC
+minimize
+X，U， y
+：  ∑
+k = 0
+N - 1
+
+
+uk + λ
+
+xk - y
+（25a）
+subject to：
+ 
+ì
+í
+î
+ï
+ï
+ï
+ï
+ï
+ï
+ïïï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ï
+ïïï
+ï
+ï
+ï
+ï
+ï
+xk + 1 = Axk + Buk 
+        ∀k ∈{
+}
+0，1，…，N - 1              ( 25b )
+xk - x
+obs，j
+k
+∉L
+j
+k                                     ( 25c )
+μ
+k
+ij +(
+)
+a
+k
+ij
+T
+xk + Mz
+k
+ij ≥
+         2Σ
+k
+ij ⋅erf
+-1(
+)
+1 - 2ε
+j
+k              ( 25d )
+X ∈X ⊂R
+N × nx                                   ( 25e )
+U ∈U ⊂R
+N × nu                                    ( 25f )
+x0 = x( )
+0                                             ( 25g )
+y ∈X goal                                                ( 25h )
+2. 3　滚动时域框架
+由于不确定性会随着时间的推移而增加，从
+而导致eVTOL 对障碍物的估计逐渐保守化，为
+此，提供了一个滚动时域控制框架实现对eV⁃
+TOL 的闭环控制，见算法2。首先初始化eV⁃
+TOL 的工作空间、初始状态、目标区域、环境信
+息、指定的风险阈值，T 和N 分别表示规划时域和
+控制时域。在整个运动规划过程中，算法2 会不
+断迭代新的解决方案，对eVTOL 的运动进行前
+向传播，并更新环境信息，直到eVTOL 到达目标
+区域或超过时域上限T。
+3　仿真实验
+为了验证提出算法的有效性，在3 种不同的
+场景下进行了仿真实验。软件平台为MATLAB
+2022b， 硬件平台在Windows 11 系统上进行，其
+它参数Intel（R） Core（TM） i5-12450H CPU 
+2. 00 GHz；内存8 GB。
+3. 1　2D 静态环境下的开环实验
+如图3 所示，在本例中设置了一个包含碰
+撞规避和地理围栏两种约束的2D 静态环境，
+eVTOL 从起始点xstart = [10，10] 出发规划到目
+算法2 
+Receding horizon control framework
+Input： plan space X；initial state x0； goal X goal； map； body - set；
+obstacles’ initial belief； geo - fence
+Parameter： threshold ε； plan horizon T； control horizon 0 < N < T
+1   tc ←0；qc ←x0
+2  while qc ∉X goal&&  tc < T
+3             Deterministic constraints ←Chance constraints
+4             ( X r，U r) ← RRT*(tc，qc) 
+5             while Not converged 
+6                  Problem 3 ←Problem 2   
+7                  ( x*，u*) ←Solve Problem 3   
+8              tc ←Clock ( )
+9              Map ←Updata ( tc，Map ) 
+10             qc ←Model( tc，u* )
+11             N ←min ( N，T - tc )          
+12 return historical trajectory
+算法1 
+Iterative convex optimization process
+Input： Initial reference trajectory ( X 0，U 0)
+Parameter： 0 < ρˉ1 < ρˉ2 < 1，γ1 < 1 < γ2，δx，δu，α1，α2
+1   i ←0；( X r，U r) ←( X 0，U 0)
+2  while 
+
+X i + 1 - X i
+2
+≤δx&&
+
+U i + 1 - U i
+2
+≤δu
+3             Problem 3 ←Problem 2 
+4             ( X i + 1，U i + 1) ←Solve Problem 3 \\ 
+5             if  
+
+X i + 1 - X i
+2
+≤rx&&
+
+U i + 1 - U i
+2
+≤ru
+6                  ρi ←Calculate approximation accuracy
+7                  if    ρi < ρˉ1
+8                       (rx，ru) ←γ1 ⋅(rx，ru)                       
+9                  else
+10                      if  ρi > ρˉ2  
+11                           (rx，ru) ←min{γ2 ⋅(rx，ru)，(r max
+x
+，r max
+u )}
+12                           ( X r，U r) ←( X i + 1，U i + 1)
+13            else             
+14                  ω ←α1 ⋅ω     
+15            (rx，ru) ←α2 ⋅(rx，ru)
+16            j ←j + 1
+17 retrun   ( X i + 1，U i + 1)       
+
+航
+空
+学
+报
+332083-8
+标区域中心点xgoal = [60，60] 的最优性能轨迹同
+时要求避开障碍和地理围栏。障碍的安全区表
+示为圆形，半径R = 4，为了更直观地测试机会
+约束有效性，障碍没有被添加运动信息，初始
+状态x
+obs
+0 ~N ( μ
+obs
+0 ，Σ
+obs
+0 )，μ
+obs
+0 =[ 40，40]，Σ
+obs
+0
+=
+[2，2；0，2]；地理围栏的形状表示一个四边形，相关
+参
+数
+为
+a1 =[ - 1，1/3]，a2 =[ - 1，3]，a3 =
+[1，0]，a4 =[0，-1]。
+eVTOL 的安全区参数与障碍相同，运动方
+程参数A=［1， 0， Δt， 0； 0， 1， 0， Δt； 0， 0， 
+1， 0； 0， 0， 0， 1］，B=［Δt
+2/2， 0； 0，Δt
+2/2； 
+Δt， 0； 0，Δt］；采样时间步长Δt = 0. 2 s；状态约
+束
+为
+x ∈[( x，y，vx，vy )：0 ≤x ≤100，0 ≤y ≤
+100，-5 ≤vx ≤5，-5 ≤vy ≤5 ]；控制约束为
+u ∈[( u1，u2 )：- 2 ≤u1 ≤2，-2 ≤u2 ≤2 ]；本例
+为开环仿真，规划时域与控制时域相等T =
+N = 15 s/Δt = 75。
+如图4 所示，通过1 000 次蒙特卡洛的开环轨
+迹仿真，得到了3 种不同安全阈值下的规划结果，
+更小的阈值生成更大的安全边界。表1 展示了在
+模拟中不同安全阈值下的碰撞次数与代价的关
+系，由于概率约束转换时不可避免的保守性，因
+此实际碰撞次数将会比预计的碰撞风险要低。
+而且很容易发现，随着安全性要求的提升，eV⁃
+TOL 会更倾向于选择代价更大的行动方案以尽
+可能地远离障碍物。
+3. 2　2D 动态环境下的闭环实验
+在本例中，通过滚动时域控制框架实现eV⁃
+TOL 在动态场景的闭环控制，起始点为xstart =
+[60，60]，目标区域中心为xgoal =[90，90]；动态障
+碍的运动方程参数为A
+obs =[1，0，1，0]，B
+obs =
+[0. 1；-3]；初始状态x
+obs
+0 ~N ( μ
+obs
+0 ，Σ
+obs
+0 )， μ
+obs
+0 =
+图 3　环境地图初始化
+Fig. 3　Initial configurations of the environment
+图 4　不同安全阈值下的开环轨迹
+Fig. 4　Open-loop trajectories under different safe thresholds
+表1　不同阈值下的失败次数和平均代价
+ Table 1　Number of collisions and cost under different 
+thresholds
+安全阈值ε
+0. 001
+0. 01
+0. 1
+碰撞次数
+1
+6
+33
+平均代价
+83. 738 9
+62. 623 8
+57. 688 9
+
+航
+空
+学
+报
+332083-9
+[50，100]，Σ
+obs
+0
+=[1，1；0，1]；扰动w
+obs
+0 ~N (0，Σ
+obs
+0 )，
+Σ
+obs
+0
+=[5，5；0，5]。
+在闭环控制中，需要eVTOL 具备实时测量障
+碍位置信息的能力，对此考虑一个线性的测量模型
+y
+obs，j
+k
+= Hx
+obs，j
+k
++ vk
+（26）
+式中：y
+obs，j
+k
+∈X 表示为eVTOL 在k 时刻对第j 个
+障碍的观测，测量噪声v~N (0，Σ v)。
+卡尔曼滤波已被证明是一件有效的状态估
+计工具。先定义状态估计的先验x̂ obs，j
+k|k - 1 和后验
+x̂ obs，j
+k|k ，以及先验协方差Σ̂
+obs，j
+k|k
+和后验协方差Σ̂
+obs，j
+k|k - 1，
+那么障碍的状态更新过程就可以由以下卡尔曼
+方程实现
+ì
+í
+î
+ï
+ï
+ï
+ïïï
+ï
+ï
+ï
+ï
+ï
+ïïï
+ï
+ï
+x̂ obs，j
+k|k - 1 = A
+obs，j x̂ obs，j
+k - 1|k - 1 + B
+obs，j
+Σ̂
+obs，j
+k|k - 1 = A
+obs，jΣ̂
+obs，j
+k - 1|k - 1(
+)
+A
+obs，j
+T + Σ wobs，j
+K
+obs，j
+k
+= Σ̂
+obs，j
+k|k - 1 + H
+T(
+)
+Σ v + HΣ̂
+obs，j
+k|k - 1 H
+T
+-1
+x̂ obs，j
+k|k
+= x̂ obs，j
+k|k - 1 + K
+obs，j
+k
+(
+)
+y
+obs，j
+k
+- Hx̂ obs，j
+k|k - 1
+Σ̂
+obs，j
+k|k
+= (
+)
+I - K
+obs，j
+k
+H Σ̂
+obs，j
+k|k - 1
+（27）
+设置测量方程参数H =[1，0，0，1]，Σ v =
+[0. 1，0，0，0. 1]，规划时域T = 20 s/Δt = 40，控制
+时域N = 10，eVTOL 的运动模型和其余参数设
+置与3. 1 节相同。
+在仿真中，安全阈值εobs = 0. 05。图5 描述了
+实时规划安全轨迹的过程，由于不确定性随着时
+间的推移而增加，包裹障碍的蓝色概率椭圆也随
+之增加，红色表示为历史轨迹，粉色航路点表示
+为控制时域内的预测轨迹。通常来说，控制时域
+越长越有助于降低未来发生碰撞的风险，但这会
+增加计算上的负担，对此这里分别比较了N = 
+10、N = 20 和N = 30 这3 个不同控制时域下每
+个时间步的计算时间。如图6 所示，容易发现，更
+长的控制时域下规划的轨迹质量更高，虽然牺牲
+了那个时间步计算时间，但更“远见”的规划却帮
+助eVTOL 更快地到达了目标；而较短的控制时
+域可能会导致eVTOL 发生绕路行为，增加不必
+要的探索成本，因此更适合变化更剧烈的环境。
+图 5　闭环运动规划过程
+Fig. 5　Close-loop trajectory obtained over simulation
+
+航
+空
+学
+报
+332083-10
+3. 3　3D 动态环境下的闭环实验
+在本例中，为了更好对比算法性能，在4 种
+不同的3D 环境下进行闭环仿真实验，图7（a）和
+图7（b）分别描述了正常和密集障碍的高空自由
+飞行场景，图7（c）和图7（d）描述了正常和密集障
+碍的低空城市飞行场景。为不失一般性，场景中
+所有的动态障碍和静态地理围栏均随机初始化，
+每个场景的安全阈值设置 εobs = εgeo = 0. 05；时间
+图 6　在不同控制时域下的计算时间
+ Fig. 6　Computation times for various values of control 
+horizon
+图 7　不同场景下的闭环运动规划过程
+Fig. 7　Close-loop trajectory obtained for different scenarios over simulation
+
+航
+空
+学
+报
+332083-11
+步长Δt = 0. 4 s；规划时域T = 40 s/Δt = 100，控
+制时域N = 10，eVTOL 的起始点和目标中心点
+设置见表2。
+不同地图下性能度量见表3，其中Av. CT
+表示平均计算时间，CC 表示控制代价，FR 表示
+任务失败概率，可以发现CC-MPC 在CC 和FR
+指标上均优于不考虑风险的MPC，而横向来看
+随着场景复杂性增加3 项指标也随之变大。
+由于传统MPC 方法没有考虑不确定性的影响，
+为了公平起见，通过增加额外的安全区来抵消
+不确定性，称为Buffer-MPC（B-MPC），在每个
+地图下以不同半径的安全区仿真运行1 000 次，
+并将结果与CC-MPC 进行比较。如图8 和图9
+所示，随着安全区半径的增大，eVTOL 的规划
+策略趋向于保守化，失败率变低，而控制成本变
+高。此外，还可以发现，无论是失败率相同的情
+况下或控制代价相同的情况下，B-MPC 的性能
+均不如CC-MPC，这是因为单纯设置保护区大
+小的方式是无法准确描述大量不确定障碍物
+的，从而导致规划策略过于保守或是过于
+危险。
+表3　不同地图下的MPC 和CC-MPC 性能度量比较
+Table 3　Comparison of performance metric between MPC and CC-MPC under different maps
+性能指标
+Av. CT
+CC
+FR
+Map 1
+MPC
+0. 022
+24. 657
+0. 313
+CC-MPC
+0. 036
+30. 361
+0. 022
+Map 2
+MPC
+0. 044
+37. 709
+0. 535
+CC-MPC
+0. 059
+59. 617
+0. 041
+Map 3
+MPC
+0. 031
+19. 660
+0. 516
+CC-MPC
+0. 071
+25. 582
+0. 032
+Map 4
+MPC
+0. 086
+44. 635
+0. 704
+CC-MPC
+0. 131
+53. 478
+0. 025
+表2　不同地图的仿真参数设置
+Table 2　Simulation settings for different maps
+地图序号
+Map 1
+Map 2
+Map 3
+Map 4
+起始点
+［10 10 200］
+［10 10 200］
+［10 10 10］
+［10 10 10］
+目标点
+［130 100 300］
+［180 140 300］
+［130 100 20］
+［180 140 20］
+图 8　不同安全裕度下B-MPC 和CC-MPC 的失败率比较
+Fig. 8　Comparison of failure rates between B-MPC and CC-MPC under different buffer radii
+
+航
+空
+学
+报
+332083-12
+4　结 
+论
+提出了基于风险意识的eVTOL 运动规划算
+法，通过同时考虑动态避撞约束和静态地理围栏
+约束，构建了基于机会约束的模型预测控制子问
+题；利用置信椭球和Big-M 法重构机会约束，从
+而得到确定性形式的CC-MPC，通过迭代凸化技
+术和前端全局搜索提高了优化算法的求解效率。
+基于滚动时域框架进行数值仿真实验，算法在不
+同场景下均得到了良好的表现，可以实时输出最
+优轨迹，同时具有鲁棒性。
+参 
+考 
+文 
+献
+［1］THIPPHAVONG D P， APAZA R， BARMORE B， 
+et al. Urban air mobility airspace integration concepts and 
+considerations： AIAA-2018-3676［R］. Reston： AIAA， 
+2018.
+［2］BARRETT-GONZALEZ 
+R 
+M， 
+DENNELER 
+M， 
+SCHWAB Z， et al. Designing eVTOL and UAM aircraft 
+for flight safety， EMP， EMI and HIRF resistance， FAA 
+certification， insurability， ground safety and community 
+acceptance［C］∥AIAA Aviation 2023 Forum. Reston： 
+AIAA， 2023.
+［3］余莎莎， 陈星雨， 西华大学. 城市空中交通领域关键技术
+创新与挑战［J］. 航空学报， 2024， 45（增刊1）： 730657.
+YU S S， CHEN X Y， XI H. Key technological innova⁃
+tions and challenges in urban air mobility［J］. Acta Aero⁃
+nautica et Astronautica Sinica， 2024， 45（S1）： 730657.
+［4］邓景辉. 电动垂直起降飞行器的技术现状与发展［J］. 航
+空学报， 2024， 45（5）： 529937.
+DENG J H. Technical status and development of electric 
+vertical take-off and landing aircraft［J］. Acta Aeronau⁃
+tica et Astronautica Sinica， 2024， 45（5）： 529937 （in 
+Chinese）.
+［5］吕洋， 康童娜， 潘泉， 等. 无人机感知与规避： 概念、技术
+与系统［J］. 中国科学： 信息科学， 2019， 49（5）： 520-537.
+LÜ/LV/LU/LYU） Y， KANG T N， PAN Q， et al. 
+UAV sense and avoidance： Concepts， technologies， and 
+systems［J］. Scientia Sinica （Informationis）， 2019， 49
+（5）： 520-537 （in Chinese）.
+［6］汤新民， 顾俊伟， 刘冰， 等. 低空监视技术及其发展趋势综
+述［J］. 南京航空航天大学学报， 2024， 56（6）： 973-993.
+TANG X M， GU J W， LIU B， et al. Review on low-
+altitude surveillance technology and its development trend
+［J］. Journal of Nanjing University of Aeronautics & As⁃
+tronautics， 2024， 56（6）： 973-993 （in Chinese）.
+［7］景晓年， 梁晓龙， 张佳强， 等. 无人机感知避让技术分析
+［J］. 火力与指挥控制， 2017， 42（4）： 1-5.
+JING X N， LIANG X L， ZHANG J Q， et al. Analysis 
+of UAV sense and avoid technology［J］. Fire Control & 
+Command Control， 2017， 42（4）： 1-5 （in Chinese）.
+［8］王兴隆， 王友杰. 面向城市低空的多机型eVTOL 安全间
+隔评估［J］. 航空学报， 2025， 46（1）： 330604.
+图 9　不同安全裕度下的B-MPC 和CC-MPC 的控制代价比较
+Fig. 9　Comparison of control cost between B-MPC and CC-MPC under different buffer radii
+
+航
+空
+学
+报
+332083-13
+WANG X L， WANG Y J. Safety interval evaluation for 
+multi-aircraft eVTOL in urban low altitude［J］. Acta 
+Aeronautica et Astronautica Sinica， 2025， 46（1）： 
+330604 （in Chinese）.
+［9］ZOU Y Y， ZHANG H H， ZHONG G， et al. Collision 
+probability estimation for small unmanned aircraft sys⁃
+tems ［J］. Reliability Engineering & System Safety， 
+2021， 213： 107619.
+［10］薛震， 盛汉霖， 陈欣， 等. 基于剪枝可视性地图的无人机
+全局规划方法［J］. 航空学报， 2025， 46（10）： 331279.
+XUE Z， SHENG H L， CHEN X， et al. Global planning 
+method for UAVs based on pruned visibility map［J］. 
+Acta Aeronautica et Astronautica Sinica， 2025， 46（10）： 
+331279 （in Chinese）.
+［11］郭华， 郭小和. 改进速度障碍法的无人机局部路径规划算
+法［J］. 航空学报， 2023， 44（11）： 327586.
+GUO H， GUO X H. Local path planning algorithm for 
+UAV based on improved velocity obstacle method［J］. 
+Acta Aeronautica et Astronautica Sinica， 2023， 44（11）： 
+327586 （in Chinese）.
+［12］HART P E， NILSSON N J， RAPHAEL B. A formal 
+basis for the heuristic determination of minimum cost 
+paths［J］. IEEE Transactions on Systems Science and Cy⁃
+bernetics， 1968， 4（2）： 100-107.
+［13］KARAMAN S， WALTER M R， PEREZ A， et al. Any⁃
+time motion planning using the RRT［C］∥2011 IEEE In⁃
+ternational Conference on Robotics and Automation. Pis⁃
+cataway： IEEE Press， 2011： 1478-1483.
+［14］BETTS J T， CAMPBELL S， DIGIROLAMO C. Ex⁃
+amination of solving optimal control problems with de⁃
+lays using GPOPS-Ⅱ［J］. Numerical Algebra， Control & 
+Optimization， 2021， 11（2）： 283.
+［15］OSBORNE M R. On shooting methods for boundary 
+value problems［J］. Journal of Mathematical Analysis and 
+Applications， 1969， 27（2）： 417-433.
+［16］WANG Z P， ZHOU X， XU C， et al. Geometrically con⁃
+strained trajectory optimization for multicopters［J］. 
+IEEE Transactions on Robotics， 2022， 38（5）： 3259-3278.
+［17］JANSON L， SCHMERLING E， PAVONE M. Monte 
+Carlo motion planning for robot trajectory optimization 
+under 
+uncertainty［M］∥Robotics 
+Research. 
+Cham： 
+Springer International Publishing， 2017： 343-361.
+［18］CALAFIORE G， CAMPI M C. Uncertain convex pro⁃
+grams： Randomized solutions and confidence levels［J］. 
+Mathematical Programming， 2005， 102（1）： 25-46.
+［19］BLACKMORE L， ONO M， BEKTASSOV A， et al. A 
+probabilistic particle-control approximation of chance-
+constrained stochastic predictive control［J］. IEEE Trans⁃
+actions on Robotics， 2010， 26（3）： 502-517.
+［20］WU P C， YANG X X， WEI P， et al. Safety assured on⁃
+line guidance with airborne separation for urban air mobil⁃
+ity operations in uncertain environments［J］. IEEE Trans⁃
+actions on Intelligent Transportation Systems， 2022， 23
+（10）： 19413-19427.
+［21］LUDERS B， KOTHARI M， HOW J. Chance con⁃
+strained RRT for probabilistic robustness to environmen⁃
+tal uncertainty［C］∥AIAA Guidance， Navigation， and 
+Control Conference. Reston： AIAA， 2010.
+［22］SAFAOUI S， GRAVELL B J， RENGANATHAN V， 
+et al. Risk-averse RRT* planning with nonlinear steering 
+and tracking controllers for nonlinear robotic systems un⁃
+der uncertainty［C］∥2021 IEEE/RSJ International Con⁃
+ference on Intelligent Robots and Systems （IROS）. Pis⁃
+cataway： IEEE Press， 2021： 3681-3688.
+［23］BLACKMORE L， ONO M， WILLIAMS B C. Chance-
+constrained optimal path planning with obstacles［J］. 
+IEEE Transactions on Robotics， 2011， 27（6）： 1080-
+1094.
+［24］WU P C， XIE J F， CHEN J. Safe path planning for un⁃
+manned aerial vehicle under location uncertainty［C］∥
+2020 IEEE 16th International Conference on Control & 
+Automation （ICCA）. Piscataway： IEEE Press， 2020： 
+342-347.
+［25］WAKABAYASHI T， SUZUKI S. Dynamic obstacle 
+avoidance for multi-rotor UAV using chance-constraints 
+based on obstacle velocity［J］. Robotics and Autonomous 
+Systems， 2023， 160： 104320.
+［26］ZHANG X X， MA J， CHENG Z L， et al. Trajectory 
+generation by chance-constrained nonlinear MPC with 
+probabilistic prediction［J］. IEEE Transactions on Cyber⁃
+netics， 2021， 51（7）： 3616-3629.
+［27］KURZHANSKI A B， VARAIYA P. Ellipsoidal tech⁃
+niques for reachability analysis［C］∥Hybrid Systems： Com⁃
+putation and Control. Berlin： Springer， 2000： 202-214.
+（责任编辑：佟路）
+
+航
+空
+学
+报
+332083-14
+Risk-aware autonomous avoidance for eVTOL
+ZHANG Kang1， TANG Xinmin1，2，*， GU Junwei1
+1.  College of Civil Aviation， Nanjing University of Aeronautics and Astronautics， Nanjing 
+211106， China
+2.  Key Laboratory of Urban Air Traffic System Technology and Equipment， Civil Aviation University of China， 
+Tianjin 
+300300， China
+Abstract：In the context of urban air traffic， there is currently no mature solution for real-time avoidance of electric 
+Vertical Take-Off and Landing （eVTOL） aircraft in dynamic and uncertain environments.  To address this challenge， 
+we propose a risk-aware and efficient motion planning method for real-time eVTOL avoidance.  The problem is formu⁃
+lated as a Model Predictive Control （MPC） framework with Chance Constraints MPC （CC-MPC）， incorporating both 
+collision avoidance and geo-fencing constraints.  To efficiently handle the chance constraints， we reformulate them us⁃
+ing Big-M and confidence ellipsoids， transforming the CC-MPC problem into a Mixed-Integer Programming （MIP） 
+problem.  To efficiently solve the MIP， we employ an iterative convexification-based optimization method， comple⁃
+mented by a global search algorithm that serves as a front-end warm-start mechanism.  Finally， all components are in⁃
+tegrated within a receding horizon control framework to enable fast and dynamic trajectory generation for eVTOLs.  
+Simulation experiments across various flight scenarios demonstrate the effectiveness of the proposed approach.
+Keywords：urban air traffic；eVTOL；collision avoidance；chance constraints；motion planning
+Received：2025-04-07；Revised：2025-05-19；Accepted：2025-07-01；Published online：2025-07-21 11：12
+URL：https：//hkxb. buaa. edu. cn/CN/Y2026/V47/I2/332083
+Foundation items：National Natural Science Foundation of China （52072174）； High-Level Foreign Experts Introduction Program of 
+China（G2023202003L）； Tianjin Municipal Science and Technology Program （24JCZDJC00090）
+ * Corresponding author.  E-mail：tangxinmin@nuaa. edu. cn

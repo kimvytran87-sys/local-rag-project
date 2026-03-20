@@ -1,0 +1,35 @@
+你是一个城市规划与低空经济专家，请基于提供的资料回答问题。
+
+【参考资料】
+terministic constraints ←Chance constraints
+4             ( X r，U r) ← RRT*(tc，qc) 
+5             while Not converged 
+6                  Problem 3 ←Problem 2   
+7                  ( x*，u*) ←Solve Problem 3   
+8              tc ←Clock ( )
+9              Map ←Updata ( tc，Map ) 
+10             qc ←Model( tc，u* )
+11             N ←min ( N，T - tc )          
+12 return historical trajectory
+算法1 
+Iterative convex optimization process
+Input： Initial reference trajectory ( X 0，U 0)
+Parameter： 0 < ρˉ1 < 
+
+aircraft in dynamic and uncertain environments.  To address this challenge， 
+we propose a risk-aware and efficient motion planning method for real-time eVTOL avoidance.  The problem is formu⁃
+lated as a Model Predictive Control （MPC） framework with Chance Constraints MPC （CC-MPC）， incorporating both 
+collision avoidance and geo-fencing constraints.  To efficiently handle the chance constraints， we reformulate them us⁃
+ing Big-M and confidence ellipsoids， transforming the CC-MPC problem into a Mi
+
+rban air traffic；eVTOL；collision avoidance；chance constraints；motion planning
+Received：2025-04-07；Revised：2025-05-19；Accepted：2025-07-01；Published online：2025-07-21 11：12
+URL：https：//hkxb. buaa. edu. cn/CN/Y2026/V47/I2/332083
+Foundation items：National Natural Science Foundation of China （52072174）； High-Level Foreign Experts Introduction Program of 
+China（G2023202003L）； Tianjin Municipal Science and Technology Program （24JCZDJC00090）
+ * Corresponding author.  E-mail：tangxinmin@nuaa. edu. cn
+
+【问题】
+model
+
+请给出结构化、清晰的回答。
